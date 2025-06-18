@@ -234,13 +234,21 @@ userRouter.post('/', authMiddleware('Administrator'), async (req, res) => {
         res.status(201).json({ id: newUser._id, name, email, role, status });
     } catch (err) { res.status(400).json({ message: err.message }); }
 });
+
+// CORRECTED USER UPDATE ROUTE
 userRouter.put('/:id', authMiddleware('Administrator'), async (req, res) => {
-     try {
-        const { name, email, role, status } = req.body;
-        let updateData = { name, email, role, status };
-        if (req.body.password && req.body.password.length > 0) {
-            updateData.passwordHash = await hashPassword(req.body.password);
+    try {
+        const { name, email, role, status, password } = req.body;
+        
+        const updateData = {};
+        if (name) updateData.name = name;
+        if (email) updateData.email = email;
+        if (role) updateData.role = role;
+        if (status) updateData.status = status;
+        if (password && password.length > 0) {
+            updateData.passwordHash = await hashPassword(password);
         }
+
         const updatedUser = await User.findByIdAndUpdate(req.params.id, updateData, { new: true }).select('-passwordHash');
         if (!updatedUser) return res.status(404).json({ message: "User not found" });
         res.json(updatedUser);
@@ -340,8 +348,8 @@ async function seedDatabase() {
         ]);
 
         await EngineeringLog.create([
-            { title: "System Design & Software Architecture", excerpt: "A deep-dive into designing scalable and maintainable software systems, focusing on modern architectural patterns.", published: true, fullContent: "Full content for System Design post..." },
-            { title: "Advanced SQL Database Management", excerpt: "Exploring complex query optimization, indexing strategies, and database management techniques for high-performance applications.", published: true, fullContent: "Full content for Advanced SQL post..." },
+            { title: "System Design & Software Architecture", excerpt: "A deep-dive into designing scalable and maintainable software systems, focusing on modern architectural patterns.", published: true, content: "Full content for System Design post..." },
+            { title: "Advanced SQL Database Management", excerpt: "Exploring complex query optimization, indexing strategies, and database management techniques for high-performance applications.", published: true, content: "Full content for Advanced SQL post..." },
         ]);
 
         await SingleSection.create([
