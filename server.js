@@ -202,7 +202,46 @@ authRouter.post('/login', async (req, res) => {
 });
 app.use('/api/auth', authRouter);
 
-// Generic CRUD Routes
+// --- Projects Routes (with specific logic for 'tech' field) ---
+const projectRouter = express.Router();
+const projectController = createCrudController(Project);
+projectRouter.get('/', projectController.getPublic);
+projectRouter.get('/all', authMiddleware(), projectController.getAllAdmin);
+projectRouter.delete('/:id', authMiddleware('Administrator'), projectController.delete);
+
+// CREATE Project
+projectRouter.post('/', authMiddleware(), async (req, res) => {
+    const projectData = { ...req.body };
+    if (projectData.tech && typeof projectData.tech === 'string') {
+        projectData.tech = projectData.tech.split(',').map(skill => skill.trim());
+    }
+    const item = new Project(projectData);
+    try {
+        const newItem = await item.save();
+        res.status(201).json(newItem);
+    } catch (err) {
+        res.status(400).json({ message: err.message });
+    }
+});
+
+// UPDATE Project
+projectRouter.put('/:id', authMiddleware(), async (req, res) => {
+    const updateData = { ...req.body };
+    if (updateData.tech && typeof updateData.tech === 'string') {
+        updateData.tech = updateData.tech.split(',').map(skill => skill.trim());
+    }
+    try {
+        const updatedItem = await Project.findByIdAndUpdate(req.params.id, updateData, { new: true });
+        if (!updatedItem) return res.status(404).json({ message: "Item not found" });
+        res.json(updatedItem);
+    } catch (err) {
+        res.status(400).json({ message: err.message });
+    }
+});
+app.use('/api/projects', projectRouter);
+
+
+// Generic CRUD Routes (for other modules)
 const defineCrudRoutes = (router, model, endpointName) => {
     const controller = createCrudController(model);
     router.get('/', controller.getPublic);
@@ -213,7 +252,6 @@ const defineCrudRoutes = (router, model, endpointName) => {
     app.use(`/api/${endpointName}`, router);
 };
 
-defineCrudRoutes(express.Router(), Project, 'projects');
 defineCrudRoutes(express.Router(), Experience, 'experience');
 defineCrudRoutes(express.Router(), Expertise, 'expertise');
 defineCrudRoutes(express.Router(), EngineeringLog, 'logs');
@@ -234,8 +272,6 @@ userRouter.post('/', authMiddleware('Administrator'), async (req, res) => {
         res.status(201).json({ id: newUser._id, name, email, role, status });
     } catch (err) { res.status(400).json({ message: err.message }); }
 });
-
-// CORRECTED USER UPDATE ROUTE
 userRouter.put('/:id', authMiddleware('Administrator'), async (req, res) => {
     try {
         const { name, email, role, status, password } = req.body;
@@ -364,3 +400,4 @@ async function seedDatabase() {
         }
     }
 }
+// --- END OF FILE ---
