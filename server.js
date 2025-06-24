@@ -209,17 +209,31 @@ projectRouter.get('/', projectController.getPublic);
 projectRouter.get('/all', authMiddleware(), projectController.getAllAdmin);
 projectRouter.delete('/:id', authMiddleware('Administrator'), projectController.delete);
 
+const processTechSkills = (techField) => {
+    if (!techField) return [];
+    if (typeof techField === 'string') {
+        return techField.split(',').map(skill => skill.trim()).filter(skill => skill);
+    }
+    if (Array.isArray(techField)) {
+        return techField
+            .flatMap(item => typeof item === 'string' ? item.split(',').map(skill => skill.trim()) : [])
+            .filter(skill => skill);
+    }
+    return [];
+};
+
+
 // CREATE Project
 projectRouter.post('/', authMiddleware(), async (req, res) => {
     const projectData = { ...req.body };
-    if (projectData.tech && typeof projectData.tech === 'string') {
-        projectData.tech = projectData.tech.split(',').map(skill => skill.trim());
-    }
+    projectData.tech = processTechSkills(projectData.tech);
+    
     const item = new Project(projectData);
     try {
         const newItem = await item.save();
         res.status(201).json(newItem);
     } catch (err) {
+        console.error('Error saving project:', err.message);
         res.status(400).json({ message: err.message });
     }
 });
@@ -227,14 +241,14 @@ projectRouter.post('/', authMiddleware(), async (req, res) => {
 // UPDATE Project
 projectRouter.put('/:id', authMiddleware(), async (req, res) => {
     const updateData = { ...req.body };
-    if (updateData.tech && typeof updateData.tech === 'string') {
-        updateData.tech = updateData.tech.split(',').map(skill => skill.trim());
-    }
+    updateData.tech = processTechSkills(updateData.tech);
+    
     try {
         const updatedItem = await Project.findByIdAndUpdate(req.params.id, updateData, { new: true });
         if (!updatedItem) return res.status(404).json({ message: "Item not found" });
         res.json(updatedItem);
     } catch (err) {
+        console.error('Error updating project:', err.message);
         res.status(400).json({ message: err.message });
     }
 });
